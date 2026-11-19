@@ -2,9 +2,8 @@
 
 **Un comité de direction d'agents IA pour piloter une entreprise, construit avec Claude Code.**
 
-Chaque agent tient un rôle de direction : directeur financier, comptable, directeur juridique, juriste,
-DSI, directeur de la communication, directeur marketing. Un **Chief of Staff** reçoit les demandes et répartit
-le travail ; un **CEO** arbitre et prépare les décisions.
+Des agents IA spécialisés apportent des avis argumentés sur les sujets de l'entreprise,
+dans un cadre où le dirigeant garde toujours la décision finale.
 
 ## 🧭 Principe fondateur
 
@@ -15,7 +14,7 @@ Aucun agent ne signe, ne dépense, n'envoie ni ne déclare quoi que ce soit à l
 ## 🎯 Objectif
 
 - Obtenir rapidement des avis spécialisés et argumentés sur les sujets de l'entreprise.
-- Faire ressortir les contradictions entre domaines (juridique contre marketing, finance contre DSI…).
+- Faire ressortir les contradictions entre domaines d'expertise.
 - Garder une trace des décisions et de leurs raisons.
 - Apprendre, étape par étape, la méthode de conception d'agents IA.
 
