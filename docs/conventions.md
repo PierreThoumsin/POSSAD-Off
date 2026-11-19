@@ -1,7 +1,7 @@
 ---
 titre: Conventions du projet POSSAD-Off
 statut: valide
-mis-a-jour: 2026-11-18
+mis-a-jour: 2026-11-19
 ---
 
 # Conventions du projet POSSAD-Off
@@ -251,7 +251,8 @@ au lieu de le présenter comme conforme.
 
 ## 7. Données sensibles
 
-- Le dossier `private/` est **ignoré par Git** (`.gitignore`).
+- Tout le contenu du dossier `private/` est **ignoré par Git** (`.gitignore`), **sauf** les `README.md` et `.gitkeep`
+  qui décrivent sa structure. Ces fichiers NE DOIVENT contenir **aucune donnée sensible**.
 - Pièces d'identité, relevés bancaires, contrats non publics, données personnelles de salariés ou de clients :
   **uniquement dans `private/`**, jamais dans un commit.
 - Un agent qui rencontre une donnée sensible hors de `private/` DOIT le signaler avant tout commit.
