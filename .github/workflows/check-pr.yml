@@ -1,0 +1,216 @@
+# =============================================================================
+# check-pr.yml : contrôle automatique de chaque Pull Request (PR) sur GitHub.
+#
+# À QUOI ÇA SERT
+#   Vérifier que chaque PR respecte les conventions du projet AVANT que tu la
+#   fusionnes. Avec la fusion en "squash", le titre et la description de la PR
+#   deviennent le commit final dans `main` : c'est donc eux qu'on surveille.
+#
+# CE QUE ÇA CONTRÔLE (3 "jobs" = 3 voyants vert/rouge dans la PR)
+#   1. Nom de branche    : <type>/<description-courte> en kebab-case
+#   2. Titre de PR       : <type>(<portée optionnelle>): <description>, 72 car. max
+#   3. Description de PR : sections ## OBJECT: et ## SUMMARY: présentes et remplies
+#
+# CE QUE ÇA NE FAIT PAS
+#   - Ça ne bloque pas le merge tant que le dépôt est privé sur un compte gratuit :
+#     un voyant rouge est un avertissement, pas un verrou. Pour bloquer, il faut
+#     GitHub Pro (ou un dépôt public) + une règle "status checks obligatoires".
+#   - Ça ne vérifie pas que le texte est écrit en français : ça reste à ta relecture.
+#
+# OÙ VOIR LE RÉSULTAT
+#   Dans la PR, en bas : la zone "Checks". En cas d'échec, clique sur "Details"
+#   pour lire le message d'erreur (les lignes qui commencent par ::error:: sont
+#   affichées en rouge par GitHub).
+# =============================================================================
+
+# Nom affiché dans l'onglet "Actions" du dépôt.
+name: Check Pull Request
+
+# QUAND le workflow se lance.
+on:
+  pull_request:
+    # opened      : à la création de la PR
+    # edited      : quand tu modifies le titre ou la description
+    # synchronize : à chaque nouveau push sur la branche de la PR
+    #               (indispensable si un jour ces checks deviennent obligatoires :
+    #                GitHub les attend sur chaque nouveau commit)
+    # reopened    : quand une PR fermée est rouverte
+    types: [opened, edited, synchronize, reopened]
+
+# DROITS donnés aux jobs sur le dépôt : aucun.
+# Les jobs lisent seulement les infos de la PR (nom de branche, titre, description),
+# fournies directement par GitHub. Principe : moins de droits = moins de risques.
+permissions: {}
+
+# VARIABLES communes à tous les jobs.
+env:
+  # SOURCE UNIQUE des types autorisés, utilisée par le titre de PR et le nom de branche.
+  # Pour ajouter un type (ex. "perf"), modifie seulement cette ligne.
+  # Le "|" veut dire "ou" dans une expression régulière.
+  #   feat     : nouvelle fonctionnalité        fix      : correction de bug
+  #   docs     : documentation                  chore    : maintenance, outillage
+  #   refactor : réorganisation sans changer le comportement
+  #   test     : ajout ou correction de tests   ci       : intégration continue (ce fichier)
+  #   revert   : annulation d'un changement précédent
+  ALLOWED_TYPES: "feat|fix|docs|chore|refactor|test|ci|revert"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # JOB 1 : nom de la branche
+  # ---------------------------------------------------------------------------
+  branch-name:
+    # Nom affiché sur le voyant dans la PR.
+    name: Nom de branche
+    # Machine virtuelle Linux fournie par GitHub, détruite après le job.
+    runs-on: ubuntu-latest
+    # Si quelque chose bloque, le job est arrêté après 2 minutes.
+    timeout-minutes: 2
+    steps:
+      - name: Vérifier le format <type>/<description-courte>
+        shell: bash
+        env:
+          # github.head_ref = nom de la branche de la PR (ex. feat/ajout-auth).
+          # SÉCURITÉ : on passe la valeur par une variable d'environnement au lieu
+          # d'écrire ${{ ... }} directement dans le script. Sinon, un nom de branche
+          # piégé pourrait injecter et exécuter des commandes.
+          BRANCH_NAME: ${{ github.head_ref }}
+        run: |
+          # Expression régulière (regex) attendue, morceau par morceau :
+          #   ^                          début du texte
+          #   (${ALLOWED_TYPES}|claude)  un type autorisé, ou "claude"
+          #   /                          un slash
+          #   [a-z0-9]+                  un mot en minuscules/chiffres
+          #   (-[a-z0-9]+)*              suivi de "-mot" autant de fois que voulu (kebab-case)
+          #   $                          fin du texte
+          # "claude" est une exception : les sessions Claude dans le cloud créent
+          # automatiquement des branches claude/... et ne peuvent pas changer ce préfixe.
+          pattern="^(${ALLOWED_TYPES}|claude)/[a-z0-9]+(-[a-z0-9]+)*$"
+
+          # [[ texte =~ regex ]] teste si le texte respecte la regex ; "!" inverse le test.
+          if [[ ! "$BRANCH_NAME" =~ $pattern ]]; then
+            echo "::error::Nom de branche non conforme : '$BRANCH_NAME'"
+            echo "Format attendu : <type>/<description-courte> en kebab-case (ex. feat/ajout-auth, fix/export-csv)."
+            # ${ALLOWED_TYPES//|/, } remplace chaque "|" par ", " pour un affichage lisible.
+            echo "Types autorisés : ${ALLOWED_TYPES//|/, }, claude."
+            # exit 1 = échec du job = voyant rouge.
+            exit 1
+          fi
+          echo "Nom de branche valide : '$BRANCH_NAME'"
+
+  # ---------------------------------------------------------------------------
+  # JOB 2 : titre de la PR (format Conventional Commits)
+  # Avec la fusion en squash, ce titre devient le titre du commit dans main.
+  # ---------------------------------------------------------------------------
+  pr-title:
+    name: Titre de PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Vérifier le format Conventional Commits
+        shell: bash
+        env:
+          # Même règle de sécurité que pour le nom de branche : passage par variable.
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          # failed passe à 1 dès qu'une règle échoue. On vérifie toutes les règles
+          # avant de quitter, pour afficher toutes les erreurs d'un coup.
+          failed=0
+
+          # Regex attendue, morceau par morceau :
+          #   ^(${ALLOWED_TYPES})   un type autorisé (pas "claude" ici)
+          #   (\([a-z0-9-]+\))?     une portée optionnelle entre parenthèses, ex. (ci)
+          #   :                     deux-points puis UN espace
+          #   [^ ].*$               une description qui ne commence pas par un espace
+          # Exemples valides : "feat: ajouter l'agent comptable", "fix(ci): corriger le contrôle"
+          pattern="^(${ALLOWED_TYPES})(\([a-z0-9-]+\))?: [^ ].*$"
+          if [[ ! "$PR_TITLE" =~ $pattern ]]; then
+            echo "::error::Titre de PR non conforme : '$PR_TITLE'"
+            echo "Format attendu : <type>(<portée optionnelle>): <description en français>"
+            echo "Exemples : feat: ajouter l'agent comptable, fix(ci): corriger le contrôle des branches"
+            echo "Types autorisés : ${ALLOWED_TYPES//|/, }."
+            failed=1
+          fi
+
+          # Longueur maximale : 72 caractères, la limite habituelle d'un titre de commit.
+          # ${#PR_TITLE} = nombre de caractères du titre.
+          # Note : au squash, GitHub ajoute " (#numéro)" à la fin du titre.
+          if [ ${#PR_TITLE} -gt 72 ]; then
+            echo "::error::Titre de PR trop long : ${#PR_TITLE} caractères (72 max)."
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then exit 1; fi
+          echo "Titre de PR valide : '$PR_TITLE'"
+
+  # ---------------------------------------------------------------------------
+  # JOB 3 : description de la PR
+  # Avec la fusion en squash (message "Pull request title and description"),
+  # cette description devient le corps du commit dans main.
+  #   Obligatoires : ## OBJECT:  (l'objet, comme dans un email : pourquoi cette PR)
+  #                  ## SUMMARY: (ce qui a été ajouté, modifié ou supprimé)
+  #   Facultatives : ## TODO:, ## FIXME:, ## NOTE:, ## QUESTION:
+  # Règle du projet : titres de section en anglais majuscules, contenu en français.
+  # ---------------------------------------------------------------------------
+  pr-description:
+    name: Description de PR
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Vérifier les sections de la description
+        shell: bash
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # L'éditeur web de GitHub termine souvent les lignes par un caractère
+          # invisible "\r". Sans ce nettoyage, une section vide pourrait être
+          # considérée comme remplie. tr -d '\r' supprime tous ces caractères.
+          body=$(printf '%s\n' "$PR_BODY" | tr -d '\r')
+          failed=0
+
+          # Description vide (ou seulement des espaces) : inutile d'aller plus loin.
+          if [ -z "$(tr -d '[:space:]' <<< "$body")" ]; then
+            echo "::error::La description de la PR est vide. Sections obligatoires : ## OBJECT: et ## SUMMARY:"
+            exit 1
+          fi
+
+          # Pour chaque section obligatoire, on vérifie qu'elle existe ET qu'elle
+          # contient du texte. "awk" lit la description ligne par ligne :
+          #   - quand il trouve la ligne "## OBJECT:", il entre dans la section
+          #     (le texte écrit sur la même ligne que le titre compte aussi) ;
+          #   - il s'arrête au titre "## " suivant ;
+          #   - s'il a vu au moins une ligne non vide entre les deux, c'est bon.
+          # Les lignes placées avant la première section (ex. les 2 lignes
+          # d'attribution ajoutées par Claude) sont simplement ignorées.
+          for name in OBJECT SUMMARY; do
+            if ! awk -v name="$name" '
+                index($0, "## " name ":") == 1 {
+                  inside = 1
+                  sub("^## " name ":", "")
+                  if ($0 ~ /[^[:space:]]/) found = 1
+                  next
+                }
+                inside && /^## / { exit }
+                inside && /[^[:space:]]/ { found = 1 }
+                END { exit !found }
+              ' <<< "$body"; then
+              echo "::error::Section obligatoire absente ou vide : ## $name:"
+              failed=1
+            fi
+          done
+
+          # Seuls les 6 titres prévus sont autorisés. Ça refuse les fautes comme
+          # "## Summary:", "## SUMMARIZE:" ou "## NOTES:".
+          # Les sous-titres "### ..." restent libres (ils ne commencent pas par "## ").
+          #   grep -E '^## '  : garde les lignes qui commencent par "## "
+          #   grep -vE '...'  : retire celles qui sont autorisées ; il reste les intrus
+          #   || true         : évite une erreur quand il n'y a aucun intrus
+          unknown=$(grep -E '^## ' <<< "$body" | grep -vE '^## (OBJECT|SUMMARY|TODO|FIXME|NOTE|QUESTION):' || true)
+          if [ -n "$unknown" ]; then
+            echo "::error::Titre(s) de section non autorisé(s) :"
+            echo "$unknown"
+            echo "Titres autorisés : ## OBJECT:, ## SUMMARY: (obligatoires), ## TODO:, ## FIXME:, ## NOTE:, ## QUESTION: (facultatifs)."
+            failed=1
+          fi
+
+          if [ "$failed" -ne 0 ]; then exit 1; fi
+          echo "Description de PR valide."
