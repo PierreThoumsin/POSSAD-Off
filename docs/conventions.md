@@ -205,6 +205,8 @@ type(portée): description en français
 La description de la PR **devient le corps du commit** dans `main`. Elle DOIT suivre cette structure :
 titres de section en anglais, en majuscules, précédés de `##` et suivis de deux-points ; contenu en français.
 
+<!-- ci:pr-sections : tableau lu par la CI, garder ce format de ligne -->
+
 | Section | Statut | Contenu |
 |---|---|---|
 | `## OBJECT:` | obligatoire | l'objet de la PR, comme l'objet d'un email : pourquoi ce changement |
@@ -213,6 +215,8 @@ titres de section en anglais, en majuscules, précédés de `##` et suivis de de
 | `## FIXME:` | facultative | problèmes connus, points fragiles à reprendre |
 | `## NOTE:` | facultative | choix techniques, précisions utiles |
 | `## QUESTION:` | facultative | points ouverts, demandes de validation |
+
+<!-- /ci:pr-sections -->
 
 Aucun autre titre `##` n'est autorisé (les sous-titres `###` sont libres).
 Le modèle `.github/pull_request_template.md` préremplit cette structure : ses consignes en commentaires HTML
@@ -236,6 +240,10 @@ Vérifier automatiquement le format des Pull Requests avant leur fusion.
 Le workflow `.github/workflows/check-pr.yml` vérifie sur chaque PR le nom de la branche, le titre et la description.
 Un contrôle rouge signale une règle non respectée : la PR DOIT être corrigée avant la fusion.
 
+La liste des types (section 6) et celle des sections de description (ci-dessus) sont **lues directement dans ce
+document**, tel qu'il est sur `main`. Une nouvelle règle ne s'applique donc qu'une fois sa PR fusionnée.
+Le même workflow vérifie que le modèle `.github/pull_request_template.md` reste cohérent avec ces listes.
+
 ## 6. Commits
 
 ### Format du titre
@@ -250,6 +258,8 @@ type(portée): description en français
 
 ### Types autorisés
 
+<!-- ci:types : tableau lu par la CI, garder ce format de ligne -->
+
 | Type | Usage |
 |---|---|
 | `feat` | nouvelle fonctionnalité, nouveau workflow, nouvelle commande |
@@ -261,6 +271,8 @@ type(portée): description en français
 | `ci` | intégration continue (workflows GitHub Actions) |
 | `test` | ajout ou correction de tests |
 | `revert` | annulation d'un changement précédent |
+
+<!-- /ci:types -->
 
 ### Exemples
 
@@ -317,6 +329,9 @@ au lieu de le présenter comme conforme.
 - Toute modification de ce document est proposée au dirigeant, puis appliquée par un commit
   `docs(conventions): …` après son accord.
 - Une règle n'existe que si elle est écrite ici. Une règle écrite ailleurs n'est pas applicable.
-- Le workflow `.github/workflows/check-pr.yml` applique une partie des sections 5 et 6 (types, format des noms
-  et des titres, sections de la description). Toute modification de ces règles DOIT être reportée dans le workflow
-  dans la même Pull Request.
+- Le workflow `.github/workflows/check-pr.yml` applique une partie des sections 5 et 6 :
+  - les **listes** (types autorisés, sections de description) sont lues dans ce document, entre les marqueurs
+    `<!-- ci:… -->` : il suffit de modifier les tableaux, sans toucher au workflow. Les marqueurs et le format
+    des lignes (`` | `valeur` | … ``) NE DOIVENT PAS être modifiés ;
+  - les **formats** (kebab-case, `type(portée): description`, 72 caractères) sont écrits dans le workflow :
+    toute modification de ces formats DOIT y être reportée dans la même Pull Request.
