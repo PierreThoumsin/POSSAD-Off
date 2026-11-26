@@ -47,12 +47,13 @@ env:
   # SOURCE UNIQUE des types autorisés, utilisée par le titre de PR et le nom de branche.
   # Pour ajouter un type (ex. "perf"), modifie seulement cette ligne.
   # Le "|" veut dire "ou" dans une expression régulière.
+  # Cette liste DOIT rester identique à celle de docs/conventions.md (section 6).
   #   feat     : nouvelle fonctionnalité        fix      : correction de bug
-  #   docs     : documentation                  chore    : maintenance, outillage
+  #   docs     : documentation                  agent    : création ou modification d'une fiche agent
   #   refactor : réorganisation sans changer le comportement
-  #   test     : ajout ou correction de tests   ci       : intégration continue (ce fichier)
-  #   revert   : annulation d'un changement précédent
-  ALLOWED_TYPES: "feat|fix|docs|chore|refactor|test|ci|revert"
+  #   chore    : maintenance, outillage         ci       : intégration continue (ce fichier)
+  #   test     : ajout ou correction de tests   revert   : annulation d'un changement précédent
+  ALLOWED_TYPES: "feat|fix|docs|agent|refactor|chore|ci|test|revert"
 
 jobs:
   # ---------------------------------------------------------------------------
