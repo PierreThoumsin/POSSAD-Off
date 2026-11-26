@@ -51,9 +51,9 @@ POSSAD-Off/
 | Sujet | Règle |
 |---|---|
 | Langue | contenu en français, noms de fichiers en anglais (`decision-register.md`) |
-| Branches | `type/court-resume-en-anglais` depuis `main`, fusionnées dans `main` ; pas de `develop` |
-| Pull Requests | `type: description courte en français` |
-| Commits | `type(portée): description`, types `feat` `fix` `docs` `agent` `refactor` `chore`, **signés** |
+| Branches | `type/court-resume-en-anglais` depuis `main`, fusionnées dans `main` en squash ; pas de `develop` |
+| Pull Requests | titre `type(portée): description` ; description avec `## OBJECT:` et `## SUMMARY:` ; contrôlées par la CI |
+| Commits | `type(portée): description`, types `feat` `fix` `docs` `agent` `refactor` `chore` `ci` `test` `revert`, **signés** |
 | En-tête YAML | `titre`, `statut`, `mis-a-jour`, seulement sur les documents de référence |
 | README | émojis obligatoires sur le titre et chaque section |
 

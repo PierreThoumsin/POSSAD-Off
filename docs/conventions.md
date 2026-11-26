@@ -1,7 +1,7 @@
 ---
 titre: Conventions du projet POSSAD-Off
 statut: valide
-mis-a-jour: 2026-11-19
+mis-a-jour: 2026-11-26
 ---
 
 # Conventions du projet POSSAD-Off
@@ -17,6 +17,7 @@ Les mots **DOIT**, **NE DOIT PAS** et **PEUT** ont leur sens habituel : obligati
 
 - Le **contenu** des documents, des messages de commit et des échanges DOIT être en **français**.
 - Les **noms** de fichiers, de dossiers et de branches DOIVENT être en **anglais** (voir section 2).
+- Exception : les **titres de section** des descriptions de Pull Request sont en **anglais** (`## OBJECT:`, `## SUMMARY:`…), leur contenu reste en français (voir section 5).
 
 ## 2. Noms de fichiers et de dossiers
 
@@ -108,7 +109,7 @@ Les `README.md` DOIVENT utiliser des émojis **pertinents** pour structurer et d
 - chaque **titre de section** (`##`) DOIT commencer par un émoji ;
 - **un seul émoji par titre**, choisi pour son sens, pas pour décorer ;
 - dans le corps du texte, les émojis PEUVENT servir de repères dans les listes et tableaux (statuts, avertissements) ;
-- les émojis NE DOIVENT PAS apparaître dans les blocs de code, les noms de fichiers ni les messages de commit.
+- les émojis NE DOIVENT PAS apparaître dans les blocs de code ni dans les noms de fichiers.
 
 Pour que les mêmes émojis aient toujours le même sens d'un README à l'autre :
 
@@ -156,39 +157,84 @@ quel que soit l'outil utilisé (humain, Claude Code, Codex).
 type/court-resume-en-anglais
 ```
 
-- `type` : uniquement `feat`, `fix`, `docs`, `agent` ou `chore` (même sens que pour les commits, section 6) ;
+- `type` : un des types autorisés de la section 6 (`feat`, `fix`, `docs`, `agent`, `refactor`, `chore`, `ci`, `test`, `revert`) ;
 - `court-resume-en-anglais` : quelques mots en anglais, en minuscules et en kebab-case.
 
 | ✅ Correct | ❌ Incorrect | Problème |
 |---|---|---|
-| `docs/add-project-conventions` | `claude/business-guidance-o3ahmg` | préfixe d'outil interdit |
+| `docs/add-project-conventions` | `codex/add-conventions` | préfixe d'outil interdit |
 | `feat/add-agent-registry` | `feature/agent-registry` | type non autorisé |
 | `agent/define-cfo-scope` | `agent/définir-le-cfo` | français et accent |
 | `fix/broken-register-link` | `fix/Broken_Link` | majuscules et underscore |
 
-Aucun préfixe propre à un outil (`claude/`, `codex/`…) n'est toléré.
+Aucun préfixe propre à un outil (`codex/`…) n'est toléré, **sauf `claude/`** : les sessions Claude dans le cloud
+créent elles-mêmes leur branche sous ce préfixe et ne peuvent pas le changer. Un humain ou un agent en local
+DOIT utiliser un type de la liste.
 La seule branche permanente est `main`, version de référence toujours propre.
 
 ### Cycle de vie
 
 - une branche = **un seul sujet**, de courte durée ;
 - elle part de `main` et revient dans `main` par une Pull Request ;
-- **la fusion est décidée par le dirigeant** ;
+- **la fusion est décidée et effectuée par le dirigeant**, jamais par un agent ;
+- la fusion se fait **uniquement en « Squash and merge »** : tous les commits de la PR deviennent un seul commit dans `main` ;
+- le message de ce commit est le **titre et la description de la PR** (réglage du dépôt : *Default commit message → Pull request title and description*) ;
 - la branche est supprimée après la fusion.
 
 ### Titre des Pull Requests
 
+Avec la fusion en squash, le titre de la PR **devient le titre du commit** dans `main`.
+Il suit donc exactement le format des commits (section 6) :
+
 ```text
-type: description courte en français
+type(portée): description en français
 ```
 
-- `type` : le même que celui de la branche ;
-- description à l'infinitif, sans point final.
+- `type` : le même que celui de la branche (sauf branche `claude/`, qui prend le type adapté) ;
+- `(portée)` : facultative ;
+- description à l'infinitif, sans point final, **72 caractères maximum** pour le titre entier.
 
 | Branche | Titre de la Pull Request |
 |---|---|
 | `docs/add-project-conventions` | `docs: établir les conventions du projet` |
 | `feat/add-agent-registry` | `feat: ajouter le registre des agents` |
+| `agent/define-cfo-scope` | `agent(cfo): préciser le périmètre trésorerie` |
+
+### Description des Pull Requests
+
+La description de la PR **devient le corps du commit** dans `main`. Elle DOIT suivre cette structure :
+titres de section en anglais, en majuscules, précédés de `##` et suivis de deux-points ; contenu en français.
+
+| Section | Statut | Contenu |
+|---|---|---|
+| `## OBJECT:` | obligatoire | l'objet de la PR, comme l'objet d'un email : pourquoi ce changement |
+| `## SUMMARY:` | obligatoire | ce qui a été ajouté, modifié ou supprimé, une ligne par changement |
+| `## TODO:` | facultative | actions restantes, prochaines étapes |
+| `## FIXME:` | facultative | problèmes connus, points fragiles à reprendre |
+| `## NOTE:` | facultative | choix techniques, précisions utiles |
+| `## QUESTION:` | facultative | points ouverts, demandes de validation |
+
+Aucun autre titre `##` n'est autorisé (les sous-titres `###` sont libres).
+Le modèle `.github/pull_request_template.md` préremplit cette structure : ses consignes en commentaires HTML
+(`<!-- … -->`) DOIVENT être effacées avant la fusion, sinon elles sont copiées dans le commit.
+
+Exemple :
+
+```markdown
+## OBJECT:
+Vérifier automatiquement le format des Pull Requests avant leur fusion.
+
+## SUMMARY:
+- `.github/workflows/check-pr.yml` : création du workflow de contrôle.
+
+## TODO:
+- Rendre ce contrôle obligatoire dans un ruleset de `main`.
+```
+
+### Contrôle automatique
+
+Le workflow `.github/workflows/check-pr.yml` vérifie sur chaque PR le nom de la branche, le titre et la description.
+Un contrôle rouge signale une règle non respectée : la PR DOIT être corrigée avant la fusion.
 
 ## 6. Commits
 
@@ -212,6 +258,9 @@ type(portée): description en français
 | `agent` | création ou modification d'une fiche agent |
 | `refactor` | réorganisation sans changement de comportement (renommage, déplacement) |
 | `chore` | maintenance technique (configuration, dépendances, `.gitignore`) |
+| `ci` | intégration continue (workflows GitHub Actions) |
+| `test` | ajout ou correction de tests |
+| `revert` | annulation d'un changement précédent |
 
 ### Exemples
 
@@ -220,7 +269,7 @@ type(portée): description en français
 | `docs(conventions): définir la règle des émojis` | `update` | aucune information |
 | `agent(cfo): préciser le périmètre trésorerie` | `Agent CFO modifié.` | pas de type, point final |
 | `fix: corriger le lien vers le registre` | `fix: Fixed broken link` | description en anglais |
-| `chore: ignorer le dossier private` | `chore: 🔧 ignorer private` | émoji interdit dans un commit |
+| `chore: ignorer le dossier private` | `chore: Ignorer private.` | majuscule et point final |
 
 ### Corps et pied du message
 
@@ -228,6 +277,9 @@ type(portée): description en français
 - Le **pied** peut contenir des mentions de co-auteur (`Co-Authored-By: …`).
 - Le titre décrit **l'ensemble** des changements du commit, pas seulement le premier fichier touché.
   Si un commit mélange deux sujets, il DOIT être découpé.
+- Les émojis sont autorisés dans les messages de commit.
+- Avec la fusion en squash, seuls le titre et la description de la PR arrivent dans `main` (section 5) :
+  les commits de branche servent au suivi du travail en cours.
 
 ### Signature obligatoire
 
@@ -246,6 +298,9 @@ Ajouter ensuite la même clé publique sur GitHub comme **clé de signature** :
 
 Vérification : badge **Verified** à côté du commit sur GitHub.
 
+Le commit de squash créé par GitHub lors de la fusion est signé par GitHub et apparaît donc comme **Verified**.
+La règle s'applique quand même aux commits de branche, qui restent visibles dans la PR.
+
 Si un commit ne peut pas être signé ou n'apparaît pas comme vérifié, l'agent DOIT le signaler au dirigeant
 au lieu de le présenter comme conforme.
 
@@ -262,3 +317,6 @@ au lieu de le présenter comme conforme.
 - Toute modification de ce document est proposée au dirigeant, puis appliquée par un commit
   `docs(conventions): …` après son accord.
 - Une règle n'existe que si elle est écrite ici. Une règle écrite ailleurs n'est pas applicable.
+- Le workflow `.github/workflows/check-pr.yml` applique une partie des sections 5 et 6 (types, format des noms
+  et des titres, sections de la description). Toute modification de ces règles DOIT être reportée dans le workflow
+  dans la même Pull Request.
